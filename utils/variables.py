@@ -1,4 +1,5 @@
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
+tf.enable_v2_behavior()
 import numpy as np
 
 def init_variable(size, dim, name=None):
@@ -14,4 +15,5 @@ def get_variable(graph, session, name):
     v = graph.get_operation_by_name(name)
     v = v.values()[0]
     v = v.eval(session=session)
+
     return v
