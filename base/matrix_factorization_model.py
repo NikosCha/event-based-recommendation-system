@@ -1,16 +1,20 @@
-import tensorflow as tf
+import datetime
 import numpy as np
+import pandas as pd
+import tensorflow.compat.v2 as tf
 from tqdm import tqdm
-from utils.variables import init_variable
-from figures.diagrams import create_diagram
 
+from figures.diagrams import create_diagram
+from utils.variables import get_variable, init_variable
+
+tf.enable_v2_behavior()
 
 class MFModel:
-    def __init__(self, graph, users, events, session ):
+    def __init__(self, graph, users, events ):
         self.graph = graph
         self.users = users
         self.events = events
-        self.session = session
+        self.session = tf.compat.v1.Session(config=None, graph=graph)
         self.cases = 2
 
     def build_model(self, num_factors, lambda_user, lambda_event, learning_rate):
@@ -27,19 +31,19 @@ class MFModel:
             self.j = tf.compat.v1.placeholder(tf.int32, shape=(None, 1))
 
 
-            u_f = init_variable(len(self.users), num_factors, name='user_factors')
-            u_factors = tf.nn.embedding_lookup(u_f, self.u)
+            self.user_factors = init_variable(len(self.users), num_factors, name='user_factors')
+            u_factors = tf.nn.embedding_lookup(params=self.user_factors, ids=self.u)
 
-            event_factors = init_variable(len(self.events), num_factors, name='event_factors')
-            i_factors = tf.nn.embedding_lookup(event_factors, self.i)
-            j_factors = tf.nn.embedding_lookup(event_factors, self.j)
+            self.event_factors = init_variable(len(self.events), num_factors, name='event_factors')
+            i_factors = tf.nn.embedding_lookup(params=self.event_factors, ids=self.i)
+            j_factors = tf.nn.embedding_lookup(params=self.event_factors, ids=self.j)
 
             # Calculate the dot product + bias for known and unknown
             # item to get xui and xuj.
 
             #check if matmul works
-            xui = tf.reduce_sum(u_factors * i_factors, axis=2)
-            xuj = tf.reduce_sum(u_factors * j_factors, axis=2)
+            xui = tf.reduce_sum(input_tensor=u_factors * i_factors, axis=2)
+            xuj = tf.reduce_sum(input_tensor=u_factors * j_factors, axis=2)
 
             # We calculate xuij.
             xuij = xui - xuj
@@ -48,7 +52,7 @@ class MFModel:
             # if xuij is greater than 0, that means that 
             # xui is greater than xuj (and thats what we want).
             # u_auc = tf.reduce_mean(tf.to_float(xuij > 0))
-            self.u_auc = tf.reduce_mean(tf.compat.v1.cast(xuij > 0, float))
+            self.u_auc = tf.reduce_mean(input_tensor=tf.compat.v1.cast(xuij > 0, float))
 
             # Output the AUC value to tensorboard for monitoring.
             tf.compat.v1.summary.scalar('auc', self.u_auc)
@@ -57,16 +61,16 @@ class MFModel:
 
             #check if tf.norm works
             l2_norm = tf.add_n([
-                lambda_user * tf.reduce_sum(tf.multiply(u_factors, u_factors)),
-                lambda_event * tf.reduce_sum(tf.multiply(i_factors, i_factors)),
-                lambda_event * tf.reduce_sum(tf.multiply(j_factors, j_factors)),
+                lambda_user * tf.reduce_sum(input_tensor=tf.multiply(u_factors, u_factors)),
+                lambda_event * tf.reduce_sum(input_tensor=tf.multiply(i_factors, i_factors)),
+                lambda_event * tf.reduce_sum(input_tensor=tf.multiply(j_factors, j_factors)),
             ])
 
 
 
             # Calculate the loss as ||W||**2 - ln s(Xuij)
             #loss = l2_norm - tf.reduce_mean(tf.log(tf.sigmoid(xuij)))
-            self.loss = -tf.reduce_mean(tf.math.log(tf.sigmoid(xuij))) + l2_norm
+            self.loss = -tf.reduce_mean(input_tensor=tf.math.log(tf.sigmoid(xuij))) + l2_norm
             
             # Train using the Adam optimizer to minimize 
             # our loss function.
@@ -78,12 +82,14 @@ class MFModel:
                 
             self.session.run(init)
 
-    def train_model(self, epochs, batches, puids, peids, nuids, neids, pvuids, pveids, nvuids, nveids, factors, samples): 
+    def train_model(self, epochs, batches, puids, peids, nuids, neids, pvuids, pveids, nvuids, nveids, factors, samples, learning_rate): 
         progress = tqdm(total=batches*epochs)
 
         loss_array = []
         auc_array = []
         num_epochs = []
+        time_array = []
+        start = datetime.datetime.now().timestamp()
         for k in range(epochs):
             for _ in range(batches):
 
@@ -115,9 +121,11 @@ class MFModel:
                     _, _l, _auc = self.session.run([self.step, self.loss, self.u_auc], feed_dict)
                     l.append(_l)
                     auc.append(_auc)
-
-                
-
+                        
+            #get end time
+            end = datetime.datetime.now().timestamp()
+            trainTime = end - start
+            time_array.append(trainTime)
 
             progress.update(batches)
             progress.set_description('Loss: %.3f | AUC: %.3f' % (np.mean(l), np.mean(auc)))
@@ -127,7 +135,8 @@ class MFModel:
             auc_array.append(auc_epoch)
             num_epochs.append(k)
         progress.close()
-        create_diagram(num_epochs, loss_array, auc_array, 'Number of Epochs', 'Loss', 'AUC', '', '', 'Loss_AUC_validation_' + str(factors) + 'factors.png')
+        create_diagram(num_epochs, loss_array, auc_array, 'Number of Epochs', 'Loss', 'AUC', '', '', 'Loss_AUC_validation_' + str(factors) + 'f' + str(learning_rate)+ 'lr' + '.png', 2)
+        create_diagram(num_epochs, time_array, '', 'Number of Epochs', 'Time (s)', '', '', '', 'Time_validation_' + str(factors) + 'f' + str(learning_rate)+ 'lr' + '.png', 1)
 
     
     def validate_model(self, putids, petids, nutids, netids, samples):
@@ -234,3 +243,43 @@ class MFModel:
 
         return batch_u, batch_i, batch_j
 
+    def make_recommendation(self, event_dictionary, user_id=None, num_items=10):
+        """Recommend items for a given user given a trained model
+        Args:
+            user_id (int): The id of the user we want to create recommendations for.
+            num_items (int): How many recommendations we want to return.
+        Returns:
+            recommendations (pandas.DataFrame): DataFrame with num_items artist names and scores
+        """
+
+        # Grab our user matrix U
+        # user_vecs = get_variable(self.graph, self.session, 'user_factors')
+        with self.graph.as_default():
+            user_vecs = self.user_factors.eval(session=self.session)
+
+
+            # Grab our item matrix V
+            # item_vecs = get_variable(self.graph, self.session, 'event_factors')
+            item_vecs = self.event_factors.eval(session=self.session)
+
+        # Calculate the score for our user for all items. 
+        rec_vector = user_vecs[user_id, :].dot(item_vecs.T)
+
+        # Grab the indices of the top users
+        item_idx = np.argsort(rec_vector)[::-1][:num_items]
+
+        # Map the indices to event names and add to dataframe along with scores.
+        events, scores = [], []
+
+        for idx in item_idx:
+            events.append(event_dictionary.event.loc[event_dictionary.event_id == str(idx)].iloc[0])
+            scores.append(rec_vector[idx])
+
+        recommendations = pd.DataFrame({'events': events, 'score': scores})
+
+        return recommendations
+
+
+    def __del__(self):
+        tf.compat.v1.reset_default_graph()
+        print ("deleted")
