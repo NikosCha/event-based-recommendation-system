@@ -1,3 +1,14 @@
+import datetime
+import numpy as np
+import pandas as pd
+import tensorflow.compat.v2 as tf
+from tqdm import tqdm
+from bs4 import BeautifulSoup
+from figures.diagrams import create_diagram
+from utils.variables import get_variable, init_variable
+import tensorflow_hub as hub
+
+tf.enable_v2_behavior()
 class TextualModel:
     def __init__(self, graph):
 
