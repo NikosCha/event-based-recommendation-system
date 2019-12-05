@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+from bs4 import BeautifulSoup
 
 
 class DataGenerator:
@@ -149,6 +150,26 @@ class DataGenerator:
         # self.uvids, self.evids = data_sparse_validation.nonzero()
         self.nvuids, self.nveids, validation = sp.find(data_sparse_validation == -1)
 
+    def prepare_contextual_data(self, data):
+        try:
+            import tensorflow.compat.v2 as tf
+        except Exception:
+            pass
+
+        import tensorflow_hub as hub
+        tf.enable_v2_behavior()
+        
+        hub_url = '/tmp/module/universal_module/'
+        loaded = tf.saved_model.load(hub_url)
+
+        embed = hub.KerasLayer(hub_url)
+
+        #clean html tags etc from descriptions
+        data['description'] = data.apply(lambda row: BeautifulSoup(row.description, features="html.parser").getText(), axis=1)
+
+        #set description as 512 vector
+        data['description'] = data.apply(lambda row: embed([row.description]), axis=1)
+        return data
         
     def next_batch(self, batch_size):
         idx = np.random.choice(500, batch_size)
