@@ -20,6 +20,13 @@ class TextualModel:
         soup = BeautifulSoup(html, features="html.parser")
         return soup.get_text()
 
+    def get_cosine_similarity(self, x1, x2, name='Cosine_loss'):
+        with tf.name_scope(name):
+            x1_val = tf.sqrt(tf.reduce_sum(tf.matmul(x1,tf.transpose(x1)),axis=1))
+            x2_val = tf.sqrt(tf.reduce_sum(tf.matmul(x2,tf.transpose(x2)),axis=1))
+            denom =  tf.multiply(x1_val,x2_val)
+            num = tf.reduce_sum(tf.multiply(x1,x2),axis=1)
+            return tf.compat.v1.div(num,denom)
             #clean html tags etc from descriptions
             randomUserTraining.loc[:,'description'] = randomUserTraining.apply(lambda row: self.cleanhtml(row.description), axis=1)
             randomUserTesting.loc[:,'description'] = randomUserTesting.apply(lambda row: self.cleanhtml(row.description), axis=1)
