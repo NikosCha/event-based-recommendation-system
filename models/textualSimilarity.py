@@ -9,6 +9,7 @@ from utils.variables import get_variable, init_variable
 import tensorflow_hub as hub
 
 tf.enable_v2_behavior()
+
 class TextualModel:
     def __init__(self, graph):
 
@@ -16,6 +17,7 @@ class TextualModel:
         self.embed = hub.KerasLayer(hub_url)
         self.graph = graph
         self.session = tf.compat.v1.Session(config=None, graph=graph)
+
     def cleanhtml(self, html): 
         soup = BeautifulSoup(html, features="html.parser")
         return soup.get_text()
