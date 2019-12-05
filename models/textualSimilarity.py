@@ -77,3 +77,9 @@ class TextualModel:
         auc = np.mean(diff == True)
         print(auc)
         return auc
+
+
+
+    def __del__(self):
+        tf.compat.v1.reset_default_graph()
+        print ("deleted")
