@@ -1,3 +1,10 @@
+class TextualModel:
+    def __init__(self, graph):
+
+        hub_url = '/tmp/module/universal_module/'
+        self.embed = hub.KerasLayer(hub_url)
+        self.graph = graph
+        self.session = tf.compat.v1.Session(config=None, graph=graph)
     def cleanhtml(self, html): 
         soup = BeautifulSoup(html, features="html.parser")
         return soup.get_text()
