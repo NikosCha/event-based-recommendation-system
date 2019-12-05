@@ -17,7 +17,7 @@ class DataGenerator:
     def events_rsvp_dataset(self):
 
         #read the dataset
-        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/dataset.csv', names=['response_nn','event','user','created'])
+        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/dataset_old.csv', names=['response_nn','event','user','created'])
         #response is 
         # 0 for yes
         # 1 for no
