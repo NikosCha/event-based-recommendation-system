@@ -150,6 +150,85 @@ class DataGenerator:
         # self.uvids, self.evids = data_sparse_validation.nonzero()
         self.nvuids, self.nveids, validation = sp.find(data_sparse_validation == -1)
 
+    def contextual_features(self): 
+        #read the dataset
+        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/dataset.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'latx', 'longx', 'laty', 'longy', 'distance', 'weekday'])
+        #response is 
+        # 0 for yes
+        # 1 for no
+        # 2 for waitlist
+
+        #delete unwanted row of columns
+        df = df.drop(df.index[0])
+
+        #response to int because response has string and int as dtypes
+        df['responses'] = df['response_nn'].astype("int8")
+
+        # waitlist is approximately 1.3 % so I will delete it 
+        # df = df.loc[df.responses != 2]
+        df = df[df.responses != 2]
+
+        #delete no response, we just need 
+        df = df[df.responses != 1]
+
+        # set the yes response as number 1 instead of 0.
+        df['responses'] = df.responses.replace(0, 1)
+
+
+        #create numerical ids
+        df['event_id'] = df['event'].astype("category").cat.codes
+        df['user_id'] = df['user'].astype("category").cat.codes    
+        df = df.sort_values(by=['event_id', 'created'])
+        df = df.reset_index() 
+
+
+            
+        # Create a dictionary so we can get the original ids
+        self.event_dictionary = df[['event_id', 'event']].drop_duplicates()
+        self.event_dictionary['event_id'] = self.event_dictionary.event_id.astype(str)
+
+        self.user_dictionary = df[['user_id','user']].drop_duplicates()
+        self.user_dictionary['user_id'] = self.user_dictionary.user_id.astype(str)
+
+        #drop unneeded columns
+        df = df.drop(['time', 'utc_offset', 'responses', 'latx', 'longx', 'laty', 'longy', 'distance', 'weekday'], axis=1)
+
+        #drop the old columns 
+        df = df.drop(['event', 'user', 'response_nn', 'index'], axis=1)
+
+        #analyze the data
+
+        uniqueUsers, countsUsers = np.unique(df.user_id, return_counts=True)
+        #add a column with the sum of user RSVPs
+        df['userRSVP'] = countsUsers[df.user_id]
+
+        uniqueEvents, countsEvents = np.unique(df.event_id, return_counts=True)
+        
+        #add a column with the sum of event RSVPs
+        df['eventRSVP'] = countsEvents[df.event_id]
+        df['rank'] = df.groupby(['event_id']).cumcount()+1
+
+        #get 50% of the dataset as training data (25% testing and 25%)
+        #give us random values in [0,1] and if <0.5 return true , else false
+        mask = round(df['eventRSVP']*0.6).astype('int64') >= df['rank']
+        
+        dfTraining = df[mask]
+        dfTestingAndValidation = df[~mask]
+
+
+        #true if user and event exists in training set, false otherwise
+        mask = np.logical_and(np.isin(dfTestingAndValidation.user_id, dfTraining.user_id), np.isin(dfTestingAndValidation.event_id, dfTraining.event_id))
+        dfTestingAndValidation = dfTestingAndValidation[mask]
+
+        dfTraining = dfTraining.reset_index() 
+        dfTestingAndValidation = dfTestingAndValidation.reset_index() 
+
+        dfTraining = dfTraining.drop(['index', 'created', 'eventRSVP', 'userRSVP', 'rank'], axis=1)
+        dfTestingAndValidation = dfTestingAndValidation.drop(['index', 'created', 'eventRSVP', 'userRSVP', 'rank'], axis=1)
+
+       
+        return dfTraining, dfTestingAndValidation
+
     def prepare_contextual_data(self, data):
         try:
             import tensorflow.compat.v2 as tf
