@@ -27,6 +27,11 @@ class TextualModel:
             denom =  tf.multiply(x1_val,x2_val)
             num = tf.reduce_sum(tf.multiply(x1,x2),axis=1)
             return tf.compat.v1.div(num,denom)
+    
+    def get_sentence_embedding(self, sentence):
+        sentence = self.embed([sentence])
+        return sentence['outputs'].numpy()
+
             #clean html tags etc from descriptions
             randomUserTraining.loc[:,'description'] = randomUserTraining.apply(lambda row: self.cleanhtml(row.description), axis=1)
             randomUserTesting.loc[:,'description'] = randomUserTesting.apply(lambda row: self.cleanhtml(row.description), axis=1)
