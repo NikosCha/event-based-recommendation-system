@@ -7,6 +7,7 @@ sys.path.append(".") # Adds higher directory to python modules path.
 from tqdm import tqdm
 from data_loader.data_generator import DataGenerator
 from base.matrix_factorization_model import MFModel
+from models.textualSimilarity import TextualModel
 from figures.diagrams import create_diagram
 import datetime
 
@@ -130,7 +131,25 @@ def main():
     create_diagram(learning_rate_array, time_array, '', 'Learning Rate', 'Time (s)', '', '', '', 'Time_Test_LR.png', 1)
 
 
+def main2():
+    try:
+        import tensorflow.compat.v2 as tf
+    except Exception:
+        pass
+
+    tf.enable_v2_behavior()
+
+    print(tf.__version__)
+    
+    # DATA PREPERATION
+    dataClass = DataGenerator()
+    trainingData, testingData = dataClass.contextual_features()    
+
+    graph = tf.Graph()
+    TS_Model = TextualModel(graph)
+
+    TS_Model.validate_model(trainingData, testingData, 1000)
 
 
 if __name__ == '__main__':
-    main()
+    main2()
