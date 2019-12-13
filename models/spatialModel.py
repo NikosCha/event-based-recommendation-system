@@ -61,39 +61,18 @@ class SpatialModel:
 
             #get lat and long of user's training data
             trainingCoordinates=self.get_event_coordinates(randomUserTraining)
-            # trainingCoordinates=randomUserTraining.loc[:,['latx', 'longx']]
 
             #user's coordinates
             userCoordinates=self.get_user_coordinates(userID, randomUserTraining)
-            # userCoordinates=randomUserTraining.loc[randomUserTraining.index[0],['laty', 'longy']]
             
             #coordinates of known and unknown event
             knownEventCoordinates=self.get_event_coordinates(randomUserTesting)
             unknownEventCoordinates=self.get_event_coordinates(randomEvent)
-            # knownEventCoordinates=randomUserTesting.loc[:,['latx', 'longx']]
-            # unknownEventCoordinates=randomEvent.loc[:,['latx', 'longx']]
-
             #for known event 
             similarityKnown=self.get_score(trainingCoordinates, knownEventCoordinates, userCoordinates)
 
-            # trainingDistancesWithKnownEvent=trainingCoordinates.apply(lambda row: self.get_distance_between_two_points(row['latx'], knownEventCoordinates.latx, row['longx'], knownEventCoordinates.longx), axis=1)
-            # distanceFromHomeKnownEvent=self.get_distance_between_two_points(knownEventCoordinates.latx, userCoordinates.laty, knownEventCoordinates.longx, userCoordinates.longy)
-
-            # sigmoidKnown = tf.reduce_mean(input_tensor=tf.sigmoid(-trainingDistancesWithKnownEvent))
-            # sigmoidHome = tf.sigmoid(distanceFromHomeKnownEvent)
-
-            # similarityKnown = (sigmoidKnown + sigmoidHome/2)/2
-
-
 
             #for unknown event 
-            # trainingDistancesWithUnknownEvent=trainingCoordinates.apply(lambda row: self.get_distance_between_two_points(row['latx'], unknownEventCoordinates.latx, row['longx'], unknownEventCoordinates.longx), axis=1)
-            # distanceFromHomeUnknownEvent=self.get_distance_between_two_points(unknownEventCoordinates.latx, userCoordinates.laty, unknownEventCoordinates.longx, userCoordinates.longy)
-
-            # sigmoidUnknown = tf.reduce_mean(input_tensor=tf.sigmoid(-trainingDistancesWithUnknownEvent))
-            # sigmoidHomeUnknown = tf.sigmoid(distanceFromHomeUnknownEvent)
-
-            # similarityUnknown = (sigmoidUnknown + sigmoidHomeUnknown/2)/2
             similarityUnknown = self.get_score(trainingCoordinates, unknownEventCoordinates, userCoordinates)
 
             diff.append((similarityKnown - similarityUnknown) > 0)
@@ -101,7 +80,6 @@ class SpatialModel:
             
         diff = np.asarray(diff)
         auc = np.mean(diff == True)
-        print(auc)
         return auc
 
     def get_score(self, prevEventsCoordinates, eventCoordinates, userCoordinates):
