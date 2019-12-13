@@ -8,13 +8,14 @@ from tqdm import tqdm
 from data_loader.data_generator import DataGenerator
 from base.matrix_factorization_model import MFModel
 from models.textualSimilarity import TextualModel
+from models.spatialModel import SpatialModel
 from figures.diagrams import create_diagram
 import datetime
 
 
 
 
-
+#matrix factorization model
 def main():
     try:
         import tensorflow.compat.v2 as tf
@@ -131,6 +132,7 @@ def main():
     create_diagram(learning_rate_array, time_array, '', 'Learning Rate', 'Time (s)', '', '', '', 'Time_Test_LR.png', 1)
 
 
+#semantic model
 def main2():
     try:
         import tensorflow.compat.v2 as tf
@@ -143,7 +145,7 @@ def main2():
     
     # DATA PREPERATION
     dataClass = DataGenerator()
-    trainingData, testingData = dataClass.contextual_features()    
+    trainingData, testingData = dataClass.contextual_features('semantic', 'all')    
 
     graph = tf.Graph()
     TS_Model = TextualModel(graph)
@@ -151,5 +153,46 @@ def main2():
     TS_Model.validate_model(trainingData, testingData, 1000)
 
 
+#spatial model
+def main3():
+    try:
+        import tensorflow.compat.v2 as tf
+    except Exception:
+        pass
+
+    tf.enable_v2_behavior()
+
+    print(tf.__version__)
+    
+    # DATA PREPERATION
+    dataClass = DataGenerator()
+    trainingData, testingData = dataClass.contextual_features('spatial','San Jose')    
+
+    graph = tf.Graph()
+    TS_Model = SpatialModel(graph)
+
+    TS_Model.validate_model(trainingData, testingData, 50)
+
+
+#textual and spatial model
+def main4():
+    try:
+        import tensorflow.compat.v2 as tf
+    except Exception:
+        pass
+
+    tf.enable_v2_behavior()
+
+    print(tf.__version__)
+    
+    # DATA PREPERATION
+    dataClass = DataGenerator()
+    trainingData, testingData = dataClass.contextual_features('semAndSpat','San Jose')    
+
+    graph = tf.Graph()
+    TS_Model = SpatialModel(graph)
+
+    TS_Model.validate_model(trainingData, testingData, 1000)
+
 if __name__ == '__main__':
-    main2()
+    main3()
