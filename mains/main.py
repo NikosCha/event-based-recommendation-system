@@ -192,7 +192,40 @@ def main4():
     graph = tf.Graph()
     TS_Model = SpatialModel(graph)
 
-    TS_Model.validate_model(trainingData, testingData, 1000)
+    #get unique user's ids 
+    #we get testing data because if a user exist
+    uniqueUsers = np.unique(testingData.user_id)
+
+    #if opens
+    index =  np.random.randint(len(uniqueUsers), size=1)
+
+    #get the random user
+    userID=uniqueUsers[index][0]
+    randomUserTraining = trainingData[trainingData.user_id == userID]  
+    randomUserTesting = testingData[testingData.user_id == userID]
+
+    #get one random event of user's testing set
+    randomUserTesting = randomUserTesting.sample(n=1,replace=False)
+    #random event 
+    randomEvent = trainingData.sample(n=1,replace=False)
+
+    #get lat and long of user's training data
+    trainingCoordinates=TS_Model.get_event_coordinates(randomUserTraining)
+
+    #user's coordinates
+    userCoordinates=TS_Model.get_user_coordinates(userID, randomUserTraining)
+    
+    #coordinates of known and unknown event
+    knownEventCoordinates=TS_Model.get_event_coordinates(randomUserTesting)
+    unknownEventCoordinates=TS_Model.get_event_coordinates(randomEvent)
+
+    #for known event 
+    spatialSimilarityKnown=TS_Model.get_score(trainingCoordinates, knownEventCoordinates, userCoordinates)
+
+    #for unknown event 
+    spatialSimilarityUnknown = TS_Model.get_score(trainingCoordinates, unknownEventCoordinates, userCoordinates)
+
+    print(spatialSimilarityKnown, spatialSimilarityUnknown)
 
 if __name__ == '__main__':
-    main3()
+    main4()
