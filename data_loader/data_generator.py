@@ -150,9 +150,11 @@ class DataGenerator:
         # self.uvids, self.evids = data_sparse_validation.nonzero()
         self.nvuids, self.nveids, validation = sp.find(data_sparse_validation == -1)
 
-    def contextual_features(self): 
+    #type is 1) semantic 2) spatial 3) temporal   
+    #city can be Chicago, Phoenix, San Jose, Mountain View, Scottsdale etc etc.
+    def contextual_features(self, dataType, city): 
         #read the dataset
-        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/dataset.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'latx', 'longx', 'laty', 'longy', 'distance', 'weekday'])
+        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/new_dataset.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
         #response is 
         # 0 for yes
         # 1 for no
@@ -160,6 +162,10 @@ class DataGenerator:
 
         #delete unwanted row of columns
         df = df.drop(df.index[0])
+
+        #drop cities we dont want
+        if city != 'all' :
+            df = df[df.city == city]
 
         #response to int because response has string and int as dtypes
         df['responses'] = df['response_nn'].astype("int8")
@@ -171,9 +177,12 @@ class DataGenerator:
         #delete no response, we just need 
         df = df[df.responses != 1]
 
+        #get unique cities
+        # uniqueCities= df.city.value_counts()
+        # print(uniqueCities)
+
         # set the yes response as number 1 instead of 0.
         df['responses'] = df.responses.replace(0, 1)
-
 
         #create numerical ids
         df['event_id'] = df['event'].astype("category").cat.codes
@@ -190,8 +199,17 @@ class DataGenerator:
         self.user_dictionary = df[['user_id','user']].drop_duplicates()
         self.user_dictionary['user_id'] = self.user_dictionary.user_id.astype(str)
 
-        #drop unneeded columns
-        df = df.drop(['time', 'utc_offset', 'responses', 'latx', 'longx', 'laty', 'longy', 'distance', 'weekday'], axis=1)
+        if dataType == 'semantic':
+            #drop unneeded columns
+            df = df.drop(['time', 'utc_offset', 'responses', 'latx', 'longx', 'laty', 'longy', 'distance', 'weekday'], axis=1)
+
+        elif dataType == 'spatial':
+            #drop unneeded columns
+            df = df.drop(['time', 'utc_offset', 'responses', 'description', 'distance', 'weekday'], axis=1)
+        elif dataType == 'semAndSpat': #for semantic and spatial 
+            df = df.drop(['time', 'utc_offset', 'responses', 'distance', 'weekday'], axis=1)
+
+        
 
         #drop the old columns 
         df = df.drop(['event', 'user', 'response_nn', 'index'], axis=1)
@@ -208,7 +226,7 @@ class DataGenerator:
         df['eventRSVP'] = countsEvents[df.event_id]
         df['rank'] = df.groupby(['event_id']).cumcount()+1
 
-        #get 50% of the dataset as training data (25% testing and 25%)
+        #get 50% of the dataset as training data 
         #give us random values in [0,1] and if <0.5 return true , else false
         mask = round(df['eventRSVP']*0.6).astype('int64') >= df['rank']
         
