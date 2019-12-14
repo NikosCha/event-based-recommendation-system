@@ -80,6 +80,8 @@ class SpatialModel:
             
         diff = np.asarray(diff)
         auc = np.mean(diff == True)
+        print('----SPATIAL MODEL VALIDATION----')
+        print(auc)
         return auc
 
     def get_score(self, prevEventsCoordinates, eventCoordinates, userCoordinates):
