@@ -171,7 +171,7 @@ def main3():
     graph = tf.Graph()
     TS_Model = SpatialModel(graph)
 
-    TS_Model.validate_model(trainingData, testingData, 50)
+    TS_Model.validate_model(trainingData, testingData, 1000)
 
 
 #textual and spatial model
@@ -190,42 +190,66 @@ def main4():
     trainingData, testingData = dataClass.contextual_features('semAndSpat','San Jose')    
 
     graph = tf.Graph()
+    TX_Model = TextualModel(graph)
     TS_Model = SpatialModel(graph)
 
+    diff = []
     #get unique user's ids 
     #we get testing data because if a user exist
     uniqueUsers = np.unique(testingData.user_id)
 
-    #if opens
-    index =  np.random.randint(len(uniqueUsers), size=1)
+    for _ in range(0,1000):
+        index =  np.random.randint(len(uniqueUsers), size=1)
 
-    #get the random user
-    userID=uniqueUsers[index][0]
-    randomUserTraining = trainingData[trainingData.user_id == userID]  
-    randomUserTesting = testingData[testingData.user_id == userID]
+        #get the random user
+        userID=uniqueUsers[index][0]
+        randomUserTraining = trainingData[trainingData.user_id == userID]  
+        randomUserTesting = testingData[testingData.user_id == userID]
 
-    #get one random event of user's testing set
-    randomUserTesting = randomUserTesting.sample(n=1,replace=False)
-    #random event 
-    randomEvent = trainingData.sample(n=1,replace=False)
+        #get one random event of user's testing set
+        randomUserTesting = randomUserTesting.sample(n=1,replace=False)
+        #random event 
+        randomEvent = trainingData.sample(n=1,replace=False)
 
-    #get lat and long of user's training data
-    trainingCoordinates=TS_Model.get_event_coordinates(randomUserTraining)
+        #------------SPATIAL-----------------
+        #get lat and long of user's training data
+        trainingCoordinates=TS_Model.get_event_coordinates(randomUserTraining)
 
-    #user's coordinates
-    userCoordinates=TS_Model.get_user_coordinates(userID, randomUserTraining)
-    
-    #coordinates of known and unknown event
-    knownEventCoordinates=TS_Model.get_event_coordinates(randomUserTesting)
-    unknownEventCoordinates=TS_Model.get_event_coordinates(randomEvent)
+        #user's coordinates
+        userCoordinates=TS_Model.get_user_coordinates(userID, randomUserTraining)
+        
+        #coordinates of known and unknown event
+        knownEventCoordinates=TS_Model.get_event_coordinates(randomUserTesting)
+        unknownEventCoordinates=TS_Model.get_event_coordinates(randomEvent)
 
-    #for known event 
-    spatialSimilarityKnown=TS_Model.get_score(trainingCoordinates, knownEventCoordinates, userCoordinates)
+        #for known event 
+        spatialSimilarityKnown=TS_Model.get_score(trainingCoordinates, knownEventCoordinates, userCoordinates)
 
-    #for unknown event 
-    spatialSimilarityUnknown = TS_Model.get_score(trainingCoordinates, unknownEventCoordinates, userCoordinates)
+        #for unknown event 
+        spatialSimilarityUnknown = TS_Model.get_score(trainingCoordinates, unknownEventCoordinates, userCoordinates)
 
-    print(spatialSimilarityKnown, spatialSimilarityUnknown)
+        #------------TEXTUAL---------------------
+        #prepare data
+        randomUserTraining=TX_Model.prepare_description(randomUserTraining)
+        randomUserTesting=TX_Model.prepare_description(randomUserTesting)
+        randomEvent=TX_Model.prepare_description(randomEvent)
+
+        user_vector = np.mean(randomUserTraining['description'],0)
+
+        randomUserTesting = randomUserTesting.reset_index()
+        randomEvent = randomEvent.reset_index()
+
+        cosKnownEvent=TX_Model.get_cosine_similarity(user_vector,randomUserTesting.loc[0,'description'])
+        cosUnknownEvent=TX_Model.get_cosine_similarity(user_vector,randomEvent.loc[0,'description'])
+
+        diff.append((cosKnownEvent.numpy()[0]*spatialSimilarityKnown - cosUnknownEvent.numpy()[0]*spatialSimilarityUnknown) > 0)
+
+    diff = np.asarray(diff)
+    auc = np.mean(diff == True)
+    print('----SPATIAL AND SEMANTIC COMPINATION VALIDATION----')
+    print(auc)
 
 if __name__ == '__main__':
+    main2()
+    main3()
     main4()
