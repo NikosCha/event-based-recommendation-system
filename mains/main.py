@@ -150,7 +150,7 @@ def main2():
     graph = tf.Graph()
     TS_Model = TextualModel(graph)
 
-    TS_Model.validate_model(trainingData, testingData, 1000)
+    TS_Model.validate_model(trainingData, testingData, 10000)
 
 
 #spatial model
@@ -171,7 +171,7 @@ def main3():
     graph = tf.Graph()
     TS_Model = SpatialModel(graph)
 
-    TS_Model.validate_model(trainingData, testingData, 1000)
+    TS_Model.validate_model(trainingData, testingData, 10000)
 
 
 #textual and spatial model
@@ -198,7 +198,7 @@ def main4():
     #we get testing data because if a user exist
     uniqueUsers = np.unique(testingData.user_id)
 
-    for _ in range(0,1000):
+    for _ in range(0,10000):
         index =  np.random.randint(len(uniqueUsers), size=1)
 
         #get the random user
