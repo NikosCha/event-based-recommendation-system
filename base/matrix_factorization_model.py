@@ -1,13 +1,12 @@
 import datetime
 import numpy as np
 import pandas as pd
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from tqdm import tqdm
 
 from figures.diagrams import create_diagram
 from utils.variables import get_variable, init_variable
 
-tf.enable_v2_behavior()
 
 class MFModel:
     def __init__(self, graph, users, events ):

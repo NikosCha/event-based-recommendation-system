@@ -17,14 +17,7 @@ import datetime
 
 #matrix factorization model
 def main():
-    try:
-        import tensorflow.compat.v2 as tf
-    except Exception:
-        pass
-
-    tf.enable_v2_behavior()
-
-    print(tf.__version__)
+    import tensorflow as tf
     # DATA PREPERATION
 
     dataClass = DataGenerator()
@@ -134,12 +127,8 @@ def main():
 
 #semantic model
 def main2():
-    try:
-        import tensorflow.compat.v2 as tf
-    except Exception:
-        pass
+    import tensorflow as tf
 
-    tf.enable_v2_behavior()
 
     print(tf.__version__)
     
@@ -155,15 +144,8 @@ def main2():
 
 #spatial model
 def main3():
-    try:
-        import tensorflow.compat.v2 as tf
-    except Exception:
-        pass
+    import tensorflow as tf
 
-    tf.enable_v2_behavior()
-
-    print(tf.__version__)
-    
     # DATA PREPERATION
     dataClass = DataGenerator()
     trainingData, testingData = dataClass.contextual_features('spatial','San Jose')    
@@ -176,14 +158,7 @@ def main3():
 
 #textual and spatial model
 def main4():
-    try:
-        import tensorflow.compat.v2 as tf
-    except Exception:
-        pass
-
-    tf.enable_v2_behavior()
-
-    print(tf.__version__)
+    import tensorflow as tf
     
     # DATA PREPERATION
     dataClass = DataGenerator()
