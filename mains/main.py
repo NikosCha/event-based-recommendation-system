@@ -225,7 +225,27 @@ def main4():
     print('----SPATIAL AND SEMANTIC COMPINATION VALIDATION----')
     print(auc)
 
+#social model
+def main5():
+    import tensorflow as tf
+    
+    # DATA PREPERATION
+    dataClass = DataGenerator()
+    trainingData, testingData = dataClass.contextual_features('social','Chicago')
+    users_groups = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/group_users.csv', names=['group','user'])
+    
+    #delete unwanted row of columns
+    users_groups = users_groups.drop(users_groups.index[0])    
+
+    graph = tf.Graph()
+    TS_Model = SocialModel(graph, users_groups)
+
+    TS_Model.validate_model(trainingData, testingData, 10000)
+
+
 if __name__ == '__main__':
-    main2()
-    main3()
-    main4()
+    # main()
+    # main2()
+    # main3()
+    # main4()
+    main5()
