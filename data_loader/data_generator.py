@@ -248,13 +248,9 @@ class DataGenerator:
         return dfTraining, dfTestingAndValidation
 
     def prepare_contextual_data(self, data):
-        try:
-            import tensorflow.compat.v2 as tf
-        except Exception:
-            pass
+        import tensorflow as tf
 
         import tensorflow_hub as hub
-        tf.enable_v2_behavior()
         
         hub_url = '/tmp/module/universal_module/'
         loaded = tf.saved_model.load(hub_url)
