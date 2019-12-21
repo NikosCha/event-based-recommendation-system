@@ -9,6 +9,7 @@ from data_loader.data_generator import DataGenerator
 from base.matrix_factorization_model import MFModel
 from models.textualSimilarity import TextualModel
 from models.spatialModel import SpatialModel
+from models.socialModel import SocialModel
 from figures.diagrams import create_diagram
 import datetime
 
