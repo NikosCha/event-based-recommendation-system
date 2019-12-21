@@ -12,7 +12,7 @@ import tensorflow_hub as hub
 class TextualModel:
     def __init__(self, graph):
 
-        hub_url = '/tmp/module/universal_module/'
+        hub_url = 'https://tfhub.dev/google/universal-sentence-encoder/4'
         self.embed = hub.KerasLayer(hub_url)
         self.graph = graph
         self.session = tf.compat.v1.Session(config=None, graph=graph)
@@ -29,15 +29,15 @@ class TextualModel:
             num = tf.reduce_sum(tf.multiply(x1,x2),axis=1)
             return tf.compat.v1.div(num,denom)
     
-    def get_sentence_embedding(self, sentence):
+    def get_sentence_embeddings(self, sentence):
         sentence = self.embed([sentence])
-        return sentence['outputs'].numpy()
+        return sentence.numpy()
 
     def prepare_description(self, df):
         #clean html tags etc from descriptions
         df.loc[:,'description'] = df.apply(lambda row: self.cleanhtml(row.description), axis=1)
         #set description as 512 vector(embedding) 
-        df.loc[:,'description'] = df.apply(lambda row: self.get_sentence_embedding(row.description), axis=1)
+        df.loc[:,'description'] = df.apply(lambda row: self.get_sentence_embeddings(row.description), axis=1)
 
         return df
 
