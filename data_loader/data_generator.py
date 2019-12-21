@@ -18,7 +18,7 @@ class DataGenerator:
     def events_rsvp_dataset(self):
 
         #read the dataset
-        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/dataset_old.csv', names=['response_nn','event','user','created'])
+        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_old.csv', names=['response_nn','event','user','created'])
         #response is 
         # 0 for yes
         # 1 for no
@@ -154,7 +154,7 @@ class DataGenerator:
     #city can be Chicago, Phoenix, San Jose, Mountain View, Scottsdale etc etc.
     def contextual_features(self, dataType, city): 
         #read the dataset
-        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/new_dataset.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_new_new.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
         #response is 
         # 0 for yes
         # 1 for no
@@ -201,13 +201,14 @@ class DataGenerator:
 
         if dataType == 'semantic':
             #drop unneeded columns
-            df = df.drop(['time', 'utc_offset', 'responses', 'latx', 'longx', 'laty', 'longy', 'distance', 'weekday'], axis=1)
-
+            df = df.drop(['time', 'utc_offset', 'responses', 'group_id','latx', 'longx', 'laty', 'longy', 'city', 'distance', 'weekday'], axis=1)
         elif dataType == 'spatial':
             #drop unneeded columns
-            df = df.drop(['time', 'utc_offset', 'responses', 'description', 'distance', 'weekday'], axis=1)
+            df = df.drop(['time', 'utc_offset', 'responses', 'group_id','description', 'city', 'distance', 'weekday'], axis=1)
         elif dataType == 'semAndSpat': #for semantic and spatial 
-            df = df.drop(['time', 'utc_offset', 'responses', 'distance', 'weekday'], axis=1)
+            df = df.drop(['time', 'utc_offset', 'responses', 'group_id', 'city', 'distance', 'weekday'], axis=1)
+        elif dataType == 'social': #for social 
+            df = df.drop(['time', 'utc_offset', 'responses', 'description','latx', 'longx', 'laty', 'longy', 'city', 'distance', 'weekday'], axis=1)
 
         
 
