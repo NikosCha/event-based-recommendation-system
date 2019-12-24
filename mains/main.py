@@ -10,6 +10,7 @@ from base.matrix_factorization_model import MFModel
 from models.textualSimilarity import TextualModel
 from models.spatialModel import SpatialModel
 from models.socialModel import SocialModel
+from models.temporalModel import TemporalModel
 from figures.diagrams import create_diagram
 import datetime
 
@@ -344,6 +345,18 @@ def main6():
     print('----SPATIAL, SEMANTIC and SOCIAL COMPINATION VALIDATION----')
     print(auc)
 
+#temporal model
+def main7():
+    import tensorflow as tf
+    
+    # DATA PREPERATION
+    dataClass = DataGenerator()
+    trainingData, testingData = dataClass.contextual_features('temporal','San Jose')
+    
+    graph = tf.Graph()
+    TM_Model = TemporalModel(graph)
+
+    TM_Model.validate_model(trainingData, testingData, 10)
 
 if __name__ == '__main__':
     # main()
@@ -351,4 +364,5 @@ if __name__ == '__main__':
     # main3()
     # main4()
     # main5()
-    main6()
+    # main6()
+    main7()
