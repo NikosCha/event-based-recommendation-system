@@ -4,6 +4,7 @@ venv/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*.pyc
 
 # C extensions
 *.so
@@ -15,6 +16,7 @@ develop-eggs/
 dist/
 eggs/
 lib/
+_libs/
 lib64/
 parts/
 sdist/
