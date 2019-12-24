@@ -52,7 +52,7 @@ def main():
     auc_array = []
     num_factors_array = []
     time_array = []
-    for i in range(1,3):
+    for i in range(1,2):
         #init model class
         MF_Model = MFModel(graph, users, events)
 
@@ -130,12 +130,10 @@ def main():
 def main2():
     import tensorflow as tf
 
-
-    print(tf.__version__)
     
     # DATA PREPERATION
     dataClass = DataGenerator()
-    trainingData, testingData = dataClass.contextual_features('semantic', 'all')    
+    trainingData, testingData = dataClass.contextual_features('semantic', 'Chicago')    
 
     graph = tf.Graph()
     TS_Model = TextualModel(graph)
@@ -146,10 +144,10 @@ def main2():
 #spatial model
 def main3():
     import tensorflow as tf
-
+    
     # DATA PREPERATION
     dataClass = DataGenerator()
-    trainingData, testingData = dataClass.contextual_features('spatial','San Jose')    
+    trainingData, testingData = dataClass.contextual_features('spatial','Chicago')    
 
     graph = tf.Graph()
     TS_Model = SpatialModel(graph)
@@ -163,7 +161,7 @@ def main4():
     
     # DATA PREPERATION
     dataClass = DataGenerator()
-    trainingData, testingData = dataClass.contextual_features('semAndSpat','San Jose')    
+    trainingData, testingData = dataClass.contextual_features('semAndSpat','Chicago')    
 
     graph = tf.Graph()
     TX_Model = TextualModel(graph)
@@ -231,14 +229,17 @@ def main5():
     
     # DATA PREPERATION
     dataClass = DataGenerator()
-    trainingData, testingData = dataClass.contextual_features('social','Chicago')
-    users_groups = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/group_users.csv', names=['group','user'])
+    trainingData, testingData = dataClass.contextual_features('social','all')
+    users_groups = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/group_users.csv', names=['group_id','user'])
+
+    user_dictionary, event_dictionary = dataClass.user_dictionary, dataClass.event_dictionary 
     
     #delete unwanted row of columns
     users_groups = users_groups.drop(users_groups.index[0])    
-
+    users_groups = pd.merge(users_groups, user_dictionary, on='user')
+    users_groups = users_groups.astype('int32')
     graph = tf.Graph()
-    TS_Model = SocialModel(graph, users_groups)
+    TS_Model = SocialModel(graph, users_groups, user_dictionary, event_dictionary)
 
     TS_Model.validate_model(trainingData, testingData, 10000)
 
