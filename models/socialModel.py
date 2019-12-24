@@ -1,9 +1,8 @@
-import datetime
+import math
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tqdm import tqdm
-from bs4 import BeautifulSoup
 from figures.diagrams import create_diagram
 from utils.variables import get_variable, init_variable
 
@@ -75,8 +74,11 @@ class SocialModel:
         return auc
 
     def get_score(self, rsvpsNumber, friendsRsvpNumber):
-        score = (1 + friendsRsvpNumber)/(1 + rsvpsNumber)
+        score = self.sigmoid(friendsRsvpNumber)
         return score
+
+    def sigmoid(self,x):
+        return 1 / (1 + math.exp(-x))
 
     #from dictionary_id get real_id
     def get_user_real_id(self, dictionary_id):
