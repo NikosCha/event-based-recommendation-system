@@ -364,7 +364,7 @@ def main8():
     
     # DATA PREPERATION
     dataClass = DataGenerator()
-    trainingData, testingData = dataClass.contextual_features('semSpatSocTemp','Chicago')    
+    trainingData, testingData = dataClass.contextual_features('semSpatSocTemp','Phoenix')    
 
     users_groups = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/group_users.csv', names=['group_id','user'])
     user_dictionary, event_dictionary = dataClass.user_dictionary, dataClass.event_dictionary 
