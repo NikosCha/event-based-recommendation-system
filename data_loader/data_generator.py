@@ -213,7 +213,8 @@ class DataGenerator:
             df = df.drop(['time', 'utc_offset', 'responses', 'city', 'distance', 'weekday'], axis=1)
         elif dataType == 'temporal':
             df = df.drop(['utc_offset', 'responses', 'group_id', 'description','latx', 'longx', 'laty', 'longy', 'city', 'distance'], axis=1)
-            
+        elif dataType == 'semSpatSocTemp':   
+            df = df.drop(['utc_offset', 'responses', 'city', 'distance'], axis=1)
         
 
         #drop the old columns 
