@@ -221,7 +221,7 @@ def main4():
 
     diff = np.asarray(diff)
     auc = np.mean(diff == True)
-    print('----SPATIAL AND SEMANTIC COMPINATION VALIDATION----')
+    print('----SPATIAL AND SEMANTIC COMBINATION VALIDATION----')
     print(auc)
 
 #social model
@@ -342,7 +342,7 @@ def main6():
 
     diff = np.asarray(diff)
     auc = np.mean(diff == True)
-    print('----SPATIAL, SEMANTIC and SOCIAL COMPINATION VALIDATION----')
+    print('----SPATIAL, SEMANTIC and SOCIAL COMBINATION VALIDATION----')
     print(auc)
 
 #temporal model
@@ -358,6 +358,115 @@ def main7():
 
     TM_Model.validate_model(trainingData, testingData, 10000)
 
+#textual, spatial, social model and temporal
+def main8():
+    import tensorflow as tf
+    
+    # DATA PREPERATION
+    dataClass = DataGenerator()
+    trainingData, testingData = dataClass.contextual_features('semSpatSocTemp','Chicago')    
+
+    users_groups = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/group_users.csv', names=['group_id','user'])
+    user_dictionary, event_dictionary = dataClass.user_dictionary, dataClass.event_dictionary 
+    #delete unwanted row of columns
+    users_groups = users_groups.drop(users_groups.index[0])    
+    users_groups = pd.merge(users_groups, user_dictionary, on='user')
+    users_groups = users_groups.astype('int32')
+
+    graph = tf.Graph()
+    TX_Model = TextualModel(graph)
+    TS_Model = SpatialModel(graph)
+    S_Model = SocialModel(graph, users_groups, user_dictionary, event_dictionary)
+    TM_Model = TemporalModel(graph)
+
+    diff = []
+    #get unique user's ids 
+    #we get testing data because if a user exist
+    uniqueUsers = np.unique(testingData.user_id)
+
+    for _ in range(0,1000):
+        index =  np.random.randint(len(uniqueUsers), size=1)
+
+        #get the random user
+        userID=uniqueUsers[index][0]            
+        
+        #get his groups
+        user_groups = S_Model.get_user_groups(userID)
+        #get his friends (people from the same group) 
+        user_friends = S_Model.get_user_friend_list(user_groups,userID)
+
+        randomUserTraining = trainingData[trainingData.user_id == userID]  
+        randomUserTesting = testingData[testingData.user_id == userID]
+
+        #get one random event of user's testing set
+        randomUserTesting = randomUserTesting.sample(n=1,replace=False)
+        #random event 
+        randomEvent = trainingData.sample(n=1,replace=False)
+
+        #------------SPATIAL-----------------
+        #get lat and long of user's training data
+        trainingCoordinates=TS_Model.get_event_coordinates(randomUserTraining)
+
+        #user's coordinates
+        userCoordinates=TS_Model.get_user_coordinates(userID, randomUserTraining)
+        
+        #coordinates of known and unknown event
+        knownEventCoordinates=TS_Model.get_event_coordinates(randomUserTesting)
+        unknownEventCoordinates=TS_Model.get_event_coordinates(randomEvent)
+
+        #for known event 
+        spatialSimilarityKnown=TS_Model.get_score(trainingCoordinates, knownEventCoordinates, userCoordinates)
+
+        #for unknown event 
+        spatialSimilarityUnknown = TS_Model.get_score(trainingCoordinates, unknownEventCoordinates, userCoordinates)
+
+        #------------TEXTUAL---------------------
+        #prepare data
+        randomUserTraining=TX_Model.prepare_description(randomUserTraining)
+        randomUserTesting=TX_Model.prepare_description(randomUserTesting)
+        randomEvent=TX_Model.prepare_description(randomEvent)
+
+        user_vector = np.mean(randomUserTraining['description'],0)
+
+        randomUserTesting = randomUserTesting.reset_index()
+        randomEvent = randomEvent.reset_index()
+
+        cosKnownEvent=TX_Model.get_cosine_similarity(user_vector,randomUserTesting.loc[0,'description'])
+        cosUnknownEvent=TX_Model.get_cosine_similarity(user_vector,randomEvent.loc[0,'description'])
+
+        #--------------SOCIAL------------------------
+        socialScoreKnown = 1
+        socialScoreUnknown = 1  
+        if len(user_friends) != 0:  #if user doesnt have friends dont use the model
+            #get total number of rsvps    
+            totalNumberOfRsvps_known = S_Model.get_number_of_rsvps(randomUserTesting.event_id,trainingData)
+            #get total friends who will attend event
+            totalFriendsRsvps_known = S_Model.get_friends_rsvps_from_events(user_friends,randomUserTesting.event_id,trainingData)
+
+            #same for unknow event  
+            totalNumberOfRsvps_unknown = S_Model.get_number_of_rsvps(randomEvent.event_id,trainingData)
+            totalFriendsRsvps_unknown = S_Model.get_friends_rsvps_from_events(user_friends,randomEvent.event_id,trainingData)
+
+            socialScoreKnown = S_Model.get_score(totalNumberOfRsvps_known, totalFriendsRsvps_known)
+            socialScoreUnknown = S_Model.get_score(totalNumberOfRsvps_unknown, totalFriendsRsvps_unknown) 
+
+        #------------TEMPORAL-----------------------
+
+        userVector = TM_Model.get_user_vector(randomUserTraining)
+        eventVectorKnown = TM_Model.get_event_vector(randomUserTesting)
+        eventVectorUnknown = TM_Model.get_event_vector(randomEvent)
+
+        temporalSimilarityKnown = TM_Model.get_cosine_similarity(userVector, eventVectorKnown)
+        temporalSimilarityUnknown = TM_Model.get_cosine_similarity(userVector, eventVectorUnknown)
+
+        diff.append((cosKnownEvent.numpy()[0]*spatialSimilarityKnown*socialScoreKnown*temporalSimilarityKnown - cosUnknownEvent.numpy()[0]*spatialSimilarityUnknown*socialScoreUnknown*temporalSimilarityUnknown) > 0)
+
+    diff = np.asarray(diff)
+    auc = np.mean(diff == True)
+    print('----SPATIAL, SEMANTIC, SOCIAL AND TEMPORAL COMBINATION VALIDATION----')
+    print(auc)
+
+
 if __name__ == '__main__':
     # main()
     # main2()
@@ -365,4 +474,5 @@ if __name__ == '__main__':
     # main4()
     # main5()
     # main6()
-    main7()
+    # main7()
+    main8()
