@@ -351,12 +351,12 @@ def main7():
     
     # DATA PREPERATION
     dataClass = DataGenerator()
-    trainingData, testingData = dataClass.contextual_features('temporal','San Jose')
+    trainingData, testingData = dataClass.contextual_features('temporal','Chicago')
     
     graph = tf.Graph()
     TM_Model = TemporalModel(graph)
 
-    TM_Model.validate_model(trainingData, testingData, 10)
+    TM_Model.validate_model(trainingData, testingData, 10000)
 
 if __name__ == '__main__':
     # main()
