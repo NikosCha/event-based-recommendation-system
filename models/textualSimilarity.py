@@ -84,40 +84,9 @@ class TextualModel:
         return auc
 
     def make_recommendation(self, event_dictionary, user_id=None, num_items=10):
-        """Recommend items for a given user given a trained model
-        Args:
-            user_id (int): The id of the user we want to create recommendations for.
-            num_items (int): How many recommendations we want to return.
-        Returns:
-            recommendations (pandas.DataFrame): DataFrame with num_items artist names and scores
-        """
-
-        # Grab our user matrix U
-        # user_vecs = get_variable(self.graph, self.session, 'user_factors')
-        with self.graph.as_default():
-            user_vecs = self.user_factors.eval(session=self.session)
 
 
-            # Grab our item matrix V
-            # item_vecs = get_variable(self.graph, self.session, 'event_factors')
-            item_vecs = self.event_factors.eval(session=self.session)
-
-        # Calculate the score for our user for all items. 
-        rec_vector = user_vecs[user_id, :].dot(item_vecs.T)
-
-        # Grab the indices of the top users
-        item_idx = np.argsort(rec_vector)[::-1][:num_items]
-
-        # Map the indices to event names and add to dataframe along with scores.
-        events, scores = [], []
-
-        for idx in item_idx:
-            events.append(event_dictionary.event.loc[event_dictionary.event_id == str(idx)].iloc[0])
-            scores.append(rec_vector[idx])
-
-        recommendations = pd.DataFrame({'events': events, 'score': scores})
-
-        return recommendations
+        return 'recommendations'
 
 
     def __del__(self):
