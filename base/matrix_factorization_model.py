@@ -14,7 +14,7 @@ class MFModel:
         self.users = users
         self.events = events
         self.session = tf.compat.v1.Session(config=None, graph=graph)
-        self.cases = 2
+        self.cases = 1
 
     def build_model(self, num_factors, lambda_user, lambda_event, learning_rate):
         with self.graph.as_default():
@@ -137,6 +137,30 @@ class MFModel:
         create_diagram(num_epochs, loss_array, auc_array, 'Number of Epochs', 'Loss', 'AUC', '', '', 'Loss_AUC_validation_' + str(factors) + 'f' + str(learning_rate)+ 'lr' + '.png', 2)
         create_diagram(num_epochs, time_array, '', 'Number of Epochs', 'Time (s)', '', '', '', 'Time_validation_' + str(factors) + 'f' + str(learning_rate)+ 'lr' + '.png', 1)
 
+    def train_model_without_validation(self, epochs, batches, puids, peids, nuids, neids, factors, samples, learning_rate):
+        progress = tqdm(total=batches*epochs)
+
+        for k in range(epochs):
+            for _ in range(batches):
+
+                l = []
+                auc = []
+                for i in range(1,self.cases + 1):
+                    batch_u, batch_i, batch_j = self.get_data(i, puids, peids, nuids, neids, samples//self.cases)
+
+                    # Feed our users, known and unknown items to
+                    # our tensorflow graph. 
+                    feed_dict = { self.u: batch_u, self.i: batch_i, self.j: batch_j }
+                    # We run the session.
+                    _, _l, _auc = self.session.run([self.step, self.loss, self.u_auc], feed_dict)
+                    l.append(_l)
+                    auc.append(_auc)
+                        
+
+            progress.update(batches)
+            progress.set_description('Loss: %.3f | AUC: %.3f' % (np.mean(l), np.mean(auc)))
+   
+        progress.close()   
     
     def validate_model(self, putids, petids, nutids, netids, samples):
         # tidx = np.random.randint(low=0, high=len(utids), size=samples)
@@ -264,7 +288,7 @@ class MFModel:
         # Calculate the score for our user for all items. 
         rec_vector = user_vecs[user_id, :].dot(item_vecs.T)
 
-        # Grab the indices of the top users
+        # Grab the indices of the top events
         item_idx = np.argsort(rec_vector)[::-1][:num_items]
 
         # Map the indices to event names and add to dataframe along with scores.
@@ -277,6 +301,19 @@ class MFModel:
         recommendations = pd.DataFrame({'events': events, 'score': scores})
 
         return recommendations
+
+    def get_score(self, user_id, event_id):
+        with self.graph.as_default():
+            user_vecs = self.user_factors.eval(session=self.session)
+
+
+            # Grab our item matrix V
+            # item_vecs = get_variable(self.graph, self.session, 'event_factors')
+            item_vecs = self.event_factors.eval(session=self.session)
+
+        rec_vector = user_vecs[user_id, :].dot(item_vecs.T)
+        return rec_vector[event_id]
+
 
 
     def __del__(self):
