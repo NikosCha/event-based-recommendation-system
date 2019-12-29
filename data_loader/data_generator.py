@@ -34,15 +34,15 @@ class DataGenerator:
         # df = df.loc[df.responses != 2]
         df = df[df.responses != 2]
 
+        #delete negative responses
+        df = df[df.responses != 1]
+
         # set the no response as number -1 instead of 1.
-        df['responses'] = df.responses.replace(1, -1)
+        # df['responses'] = df.responses.replace(1, -1)
 
         # set the yes response as number 1 instead of 0.
         df['responses'] = df.responses.replace(0, 1)
 
-
-        #delete negative responses
-        # df = df[df.responses != -1]
 
         #create numerical ids
         df['event_id'] = df['event'].astype("category").cat.codes
@@ -252,6 +252,107 @@ class DataGenerator:
 
        
         return dfTraining, dfTestingAndValidation
+
+    def general_data(self, city):
+        #read the dataset
+        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_new_new.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        #response is 
+        # 0 for yes
+        # 1 for no
+        # 2 for waitlist
+
+        #delete unwanted row of columns
+        df = df.drop(df.index[0])
+
+        #drop cities we dont want
+        if city != 'all' :
+            df = df[df.city == city]
+
+        #response to int because response has string and int as dtypes
+        df['responses'] = df['response_nn'].astype("int8")
+
+        # waitlist is approximately 1.3 % so I will delete it 
+        # df = df.loc[df.responses != 2]
+        df = df[df.responses != 2]
+
+        #delete no response, we just need 
+        df = df[df.responses != 1]
+
+        # set the yes response as number 1 instead of 0.
+        df['responses'] = df.responses.replace(0, 1)
+
+        #create numerical ids
+        df['event_id'] = df['event'].astype("category").cat.codes
+        df['user_id'] = df['user'].astype("category").cat.codes    
+        df = df.sort_values(by=['event_id', 'created'])
+        df = df.reset_index() 
+
+
+            
+        # Create a dictionary so we can get the original ids
+        self.event_dictionary = df[['event_id', 'event']].drop_duplicates()
+        self.event_dictionary['event_id'] = self.event_dictionary.event_id.astype(str)
+
+        self.user_dictionary = df[['user_id','user']].drop_duplicates()
+        self.user_dictionary['user_id'] = self.user_dictionary.user_id.astype(str)
+
+        #drop the old columns 
+        df = df.drop(['event', 'user', 'response_nn', 'index', 'utc_offset', 'city', 'distance'], axis=1)
+
+        #analyze the data
+
+        uniqueUsers, countsUsers = np.unique(df.user_id, return_counts=True)
+        #add a column with the sum of user RSVPs
+        df['userRSVP'] = countsUsers[df.user_id]
+
+        uniqueEvents, countsEvents = np.unique(df.event_id, return_counts=True)
+        
+        #add a column with the sum of event RSVPs
+        df['eventRSVP'] = countsEvents[df.event_id]
+        df['rank'] = df.groupby(['event_id']).cumcount()+1
+
+        #get 50% of the dataset as training data 
+        #give us random values in [0,1] and if <0.5 return true , else false
+        mask = round(df['eventRSVP']*0.6).astype('int64') >= df['rank']
+        
+        self.dfTraining = df[mask]
+        self.dfTestingAndValidation = df[~mask]
+
+
+        #true if user and event exists in training set, false otherwise
+        mask = np.logical_and(np.isin(self.dfTestingAndValidation.user_id, self.dfTraining.user_id), np.isin(self.dfTestingAndValidation.event_id, self.dfTraining.event_id))
+        self.dfTestingAndValidation = self.dfTestingAndValidation[mask]
+
+        self.dfTraining = self.dfTraining.reset_index() 
+        self.dfTestingAndValidation = self.dfTestingAndValidation.reset_index() 
+
+        self.dfTraining = self.dfTraining.drop(['index', 'created', 'eventRSVP', 'userRSVP', 'rank'], axis=1)
+        self.dfTestingAndValidation = self.dfTestingAndValidation.drop(['index', 'created', 'eventRSVP', 'userRSVP', 'rank'], axis=1)
+
+        # Create lists of all events, users and respones
+        self.events = list(np.sort(df.event_id.unique()))
+        self.users = list(np.sort(df.user_id.unique()))      
+        responses = list(self.dfTraining.responses)
+        responsesTesting = list(self.dfTestingAndValidation.responses)
+       
+        # Get the rows and columns for our new matrix
+        rows = self.dfTraining.user_id
+        cols = self.dfTraining.event_id
+
+        rowsTesting = self.dfTestingAndValidation.user_id
+        colsTesting = self.dfTestingAndValidation.event_id
+
+        # Contruct a sparse matrix for our users and events containing RSVPs 
+        data_sparse = sp.csr_matrix((responses, (rows, cols)), shape=(len(self.users), len(self.events)))
+        data_sparse_testing = sp.csr_matrix((responsesTesting, (rowsTesting, colsTesting)), shape=(len(self.users), len(self.events)))
+        
+        #get positive feedbacks
+        # self.uids, self.eids = data_sparse.nonzero()
+        self.puids, self.peids, values = sp.find(data_sparse == 1)
+
+        # self.utids, self.etids = data_sparse_testing.nonzero()
+        self.ptuids, self.pteids, valuesTesting = sp.find(data_sparse_testing == 1)
+
 
     def prepare_contextual_data(self, data):
         import tensorflow as tf
