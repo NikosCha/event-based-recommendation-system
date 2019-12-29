@@ -13,6 +13,7 @@ from models.socialModel import SocialModel
 from models.temporalModel import TemporalModel
 from figures.diagrams import create_diagram
 import datetime
+import math
 
 
 
@@ -32,9 +33,9 @@ def main():
 
     #HYPERPARAMS
 
-    epochs = 3
-    batches = 4 #batches must be as the number of samples (SGD -> Batch size = 1 ) j_bias +
-    num_factors = 10 #latent features
+    epochs = 60
+    batches = 100 #batches must be as the number of samples (SGD -> Batch size = 1 ) j_bias +
+    num_factors = 60 #latent features
 
     #lambda regularizations 
     lambda_user = 0.0000001
@@ -42,7 +43,7 @@ def main():
     learning_rate = 0.001
 
     # The number of (u,i,j) triplets we sample for each batch.
-    samples = 15000
+    samples = 5000
 
     #TENSORFLOW GRAPH
 
@@ -53,7 +54,8 @@ def main():
     auc_array = []
     num_factors_array = []
     time_array = []
-    for i in range(1,2):
+    for i in range(1,11):
+        tf.compat.v1.reset_default_graph()
         #init model class
         MF_Model = MFModel(graph, users, events)
 
@@ -74,9 +76,9 @@ def main():
         # validate our model
         l, auc = MF_Model.validate_model(ptuids, pteids, ntuids, nteids, samples)
 
-        #get recommendations 
-        recommendation = MF_Model.make_recommendation(event_dictionary, user_id=1)
-        print(recommendation)
+        # #get recommendations 
+        # recommendation = MF_Model.make_recommendation(event_dictionary, user_id=1)
+        # print(recommendation)
 
         
         # reset variables and session
@@ -87,7 +89,7 @@ def main():
         num_factors_array.append(num_factors*i)
         
     create_diagram(num_factors_array, loss_array, auc_array, 'Number of Factors', 'Loss', 'AUC', '', '', 'Loss_AUC_testing.png', 2)
-    create_diagram(num_factors_array, time_array, '', 'Number of Epochs', 'Time (s)', '', '', '', 'Time_Test.png', 1)
+    create_diagram(num_factors_array, time_array, '', 'Number of Factors', 'Time (s)', '', '', '', 'Time_Test.png', 1)
 
 
     #tests for learning rate
@@ -95,18 +97,19 @@ def main():
     auc_array = []
     learning_rate_array = []
     time_array = []
-    for i in range(1,11):
+    for i in range(1,7):
+        tf.compat.v1.reset_default_graph()
         #init model class
         MF_Model = MFModel(graph, users, events)
 
         #build the model
-        MF_Model.build_model(40, lambda_user, lambda_event, learning_rate*i)
+        MF_Model.build_model(60, lambda_user, lambda_event, learning_rate*i)
 
         #get start time
         start = datetime.datetime.now().timestamp()
 
         #train the model
-        MF_Model.train_model(epochs, batches, puids, peids, nuids, neids, pvuids, pveids, nvuids, nveids, 40, samples, learning_rate*i)
+        MF_Model.train_model(epochs, batches, puids, peids, nuids, neids, pvuids, pveids, nvuids, nveids, 60, samples, learning_rate*i)
 
         #get end time
         end = datetime.datetime.now().timestamp()
@@ -466,13 +469,186 @@ def main8():
     print('----SPATIAL, SEMANTIC, SOCIAL AND TEMPORAL COMBINATION VALIDATION----')
     print(auc)
 
+#both models
+def main9(city):
+    import tensorflow as tf
+    
+    # DATA PREPERATION
+    dataClass = DataGenerator()
+    print(city)
+    dataClass.general_data(city)
+    trainingData, testingData = dataClass.dfTraining, dataClass.dfTestingAndValidation   
+    events, users, puids, peids, ptuids, pteids  = dataClass.events, dataClass.users, dataClass.puids, dataClass.peids, dataClass.ptuids, dataClass.pteids
+    
+
+    users_groups = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/group_users.csv', names=['group_id','user'])
+    user_dictionary, event_dictionary = dataClass.user_dictionary, dataClass.event_dictionary 
+    #delete unwanted row of columns
+    users_groups = users_groups.drop(users_groups.index[0])    
+    users_groups = pd.merge(users_groups, user_dictionary, on='user')
+    users_groups = users_groups.astype('int32')
+
+    graph = tf.Graph()
+
+    MF_Model = MFModel(graph, users, events)
+    #build the model
+    MF_Model.build_model(80, 0.0000001, 0.0000001, 0.001)
+    #train the model
+    MF_Model.train_model_without_validation(100, 100, puids, peids, '', '', 80, 15000, 0.001)
+   
+
+    TX_Model = TextualModel(graph)
+    TS_Model = SpatialModel(graph)
+    S_Model = SocialModel(graph, users_groups, user_dictionary, event_dictionary)
+    TM_Model = TemporalModel(graph)
+
+    diffMF = []
+    diffCont = []
+    diffFinal = []
+    #get unique user's ids 
+    #we get testing data because if a user exist
+    uniqueUsers = np.unique(testingData.user_id)
+
+    for _ in range(0,1000):
+        index =  np.random.randint(len(uniqueUsers), size=1)
+
+        #get the random user
+        userID=uniqueUsers[index][0]            
+        
+        #get his groups
+        user_groups = S_Model.get_user_groups(userID)
+        #get his friends (people from the same group) 
+        user_friends = S_Model.get_user_friend_list(user_groups,userID)
+
+        randomUserTraining = trainingData[trainingData.user_id == userID]  
+        randomUserTesting = testingData[testingData.user_id == userID]
+
+
+        #get one random event of user's testing set
+        randomUserTesting = randomUserTesting.sample(n=1,replace=False)
+
+        event_id_known = randomUserTesting.event_id.values
+        len_event_known = len(trainingData[trainingData.event_id == event_id_known[0]])            
+
+        #random event 
+        randomEvent = trainingData.sample(n=1,replace=False)
+        
+        event_id_unknown = randomEvent.event_id.values
+        len_event_unknown = len(trainingData[trainingData.event_id == event_id_unknown[0]])
+
+        #MATRIX FACTORIZATION -- COLLABORATIVE FILTERING MODEL
+        MFScoreKnown = MF_Model.get_score(userID,randomUserTesting.event_id)
+        MFScoreUnknown = MF_Model.get_score(userID,randomEvent.event_id)
+
+        #------------SPATIAL-----------------
+        #get lat and long of user's training data
+        trainingCoordinates=TS_Model.get_event_coordinates(randomUserTraining)
+
+        #user's coordinates
+        userCoordinates=TS_Model.get_user_coordinates(userID, randomUserTraining)
+        
+        #coordinates of known and unknown event
+        knownEventCoordinates=TS_Model.get_event_coordinates(randomUserTesting)
+        unknownEventCoordinates=TS_Model.get_event_coordinates(randomEvent)
+
+        #for known event 
+        spatialSimilarityKnown=TS_Model.get_score(trainingCoordinates, knownEventCoordinates, userCoordinates)
+
+        #for unknown event 
+        spatialSimilarityUnknown = TS_Model.get_score(trainingCoordinates, unknownEventCoordinates, userCoordinates)
+
+        #------------TEXTUAL---------------------
+        #prepare data
+        randomUserTraining=TX_Model.prepare_description(randomUserTraining)
+        randomUserTesting=TX_Model.prepare_description(randomUserTesting)
+        randomEvent=TX_Model.prepare_description(randomEvent)
+
+        user_vector = np.mean(randomUserTraining['description'],0)
+
+        randomUserTesting = randomUserTesting.reset_index()
+        randomEvent = randomEvent.reset_index()
+
+        cosKnownEvent=TX_Model.get_cosine_similarity(user_vector,randomUserTesting.loc[0,'description'])
+        cosUnknownEvent=TX_Model.get_cosine_similarity(user_vector,randomEvent.loc[0,'description'])
+
+        #--------------SOCIAL------------------------
+        socialScoreKnown = 1
+        socialScoreUnknown = 1  
+        if len(user_friends) != 0:  #if user doesnt have friends dont use the model
+            #get total number of rsvps    
+            totalNumberOfRsvps_known = S_Model.get_number_of_rsvps(randomUserTesting.event_id,trainingData)
+            #get total friends who will attend event
+            totalFriendsRsvps_known = S_Model.get_friends_rsvps_from_events(user_friends,randomUserTesting.event_id,trainingData)
+
+            #same for unknow event  
+            totalNumberOfRsvps_unknown = S_Model.get_number_of_rsvps(randomEvent.event_id,trainingData)
+            totalFriendsRsvps_unknown = S_Model.get_friends_rsvps_from_events(user_friends,randomEvent.event_id,trainingData)
+
+            socialScoreKnown = S_Model.get_score(totalNumberOfRsvps_known, totalFriendsRsvps_known)
+            socialScoreUnknown = S_Model.get_score(totalNumberOfRsvps_unknown, totalFriendsRsvps_unknown) 
+
+        #------------TEMPORAL-----------------------
+
+        userVector = TM_Model.get_user_vector(randomUserTraining)
+        eventVectorKnown = TM_Model.get_event_vector(randomUserTesting)
+        eventVectorUnknown = TM_Model.get_event_vector(randomEvent)
+
+        temporalSimilarityKnown = TM_Model.get_cosine_similarity(userVector, eventVectorKnown)
+        temporalSimilarityUnknown = TM_Model.get_cosine_similarity(userVector, eventVectorUnknown)
+
+        #------------- FINAL MODEL --------------------
+        contextualFeaturesKnown = cosKnownEvent.numpy()[0]*spatialSimilarityKnown*socialScoreKnown*temporalSimilarityKnown
+        contextualFeaturesUnknown = cosUnknownEvent.numpy()[0]*spatialSimilarityUnknown*socialScoreUnknown*temporalSimilarityUnknown
+
+        #linear combination 
+        # if MFScoreKnown and MFScoreUnknown are negative, make them positive
+
+        a_known = 1/(1 + np.log(len_event_known + 1))
+        a_unknown = 1/(1 + np.log(len_event_unknown + 1))
+
+        # if (MFScoreUnknown < 0 and MFScoreKnown < 0): 
+        #     temp = MFScoreKnown
+        #     MFScoreKnown = -MFScoreUnknown
+        #     MFScoreUnknown = -temp
+        # if MFScoreKnown < 0 :
+        #     MFScoreKnown = abs(MFScoreKnown) # prepei na einai to distance metaksi known kai unknown an einai ena agnwsto
+        #     MFScoreUnknown = abs(MFScoreUnknown) # prepei na einai to distance metaksi known kai unknown an einai ena agnwsto
+
+        #sigmoid to MF to get range from 0 to 1 
+        MFScoreKnown = 1 / (1 + math.exp(-MFScoreKnown))
+        MFScoreUnknown = 1 / (1 + math.exp(-MFScoreUnknown))
+
+
+        diffFinal.append((((a_known*contextualFeaturesKnown)*((1 - a_known)*(MFScoreKnown))) - ( (a_unknown*contextualFeaturesUnknown)*((1-a_unknown)*(MFScoreUnknown))) ) > 0)
+        diffMF.append((MFScoreKnown - MFScoreUnknown) > 0)
+        diffCont.append((contextualFeaturesKnown - contextualFeaturesUnknown) > 0)
+
+
+    diffFinal = np.asarray(diffFinal)
+    aucFinal = np.mean(diffFinal == True)
+    print('----FINAL MF AND CONT----')
+    print(aucFinal)
+
+    diffMF = np.asarray(diffMF)
+    aucMF = np.mean(diffMF == True)
+    print('----MF----')
+    print(aucMF)
+
+    diffCont = np.asarray(diffCont)
+    aucCont = np.mean(diffCont == True)
+    print('----CONT----')
+    print(aucCont)
+    
 
 if __name__ == '__main__':
-    # main()
+    main()
     # main2()
     # main3()
     # main4()
     # main5()
     # main6()
     # main7()
-    main8()
+    # main8()
+    # main9('Chicago')
+    # main9('Phoenix')
+    # main9('San Jose')
