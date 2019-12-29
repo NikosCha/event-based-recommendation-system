@@ -6,7 +6,7 @@ def init_variable(size, dim, name=None):
 
     # return tf.Variable(tf.xavier_initializer(uniform=true))
     std = np.sqrt(2 / dim)
-    return tf.Variable(tf.random.uniform([size, dim], -std, std), name=name)
+    return tf.Variable(tf.random.uniform([size, dim], std, 3*std), name=name)
 
 
 def get_variable(graph, session, name):
