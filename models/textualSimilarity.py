@@ -23,21 +23,30 @@ class TextualModel:
 
     def get_cosine_similarity(self, x1, x2, name='Cosine_loss'):
         with tf.name_scope(name):
-            x1_val = tf.sqrt(tf.reduce_sum(tf.matmul(x1,tf.transpose(x1)),axis=1))
-            x2_val = tf.sqrt(tf.reduce_sum(tf.matmul(x2,tf.transpose(x2)),axis=1))
+            x1_val = tf.sqrt(tf.reduce_sum(tf.matmul([x1],tf.transpose([x1])),axis=1))
+            x2_val = tf.sqrt(tf.reduce_sum(tf.matmul([x2],tf.transpose([x2])),axis=1))
             denom =  tf.multiply(x1_val,x2_val)
-            num = tf.reduce_sum(tf.multiply(x1,x2),axis=1)
+            num = tf.reduce_sum(tf.multiply([x1],[x2]),axis=1)
             return tf.compat.v1.div(num,denom)
     
     def get_sentence_embeddings(self, sentence):
         sentence = self.embed([sentence])
-        return sentence.numpy()
+        sentence = sentence.numpy()
+        return sentence[0]
 
     def prepare_description(self, df):
         #clean html tags etc from descriptions
         df.loc[:,'description'] = df.apply(lambda row: self.cleanhtml(row.description), axis=1)
         #set description as 512 vector(embedding) 
         df.loc[:,'description'] = df.apply(lambda row: self.get_sentence_embeddings(row.description), axis=1)
+
+        return df
+
+    def prepare_description_whole_df(self, df):
+        #clean html tags etc from descriptions
+        df = df.apply(lambda row: self.cleanhtml(row.description), axis=1)
+        #set description as 512 vector(embedding) 
+        df = df.apply(lambda row: self.get_sentence_embeddings(row.description), axis=1)
 
         return df
 
