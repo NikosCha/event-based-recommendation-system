@@ -15,10 +15,10 @@ class DataGenerator:
         self.utids = ''
         self.etids = ''
 
-    def events_rsvp_dataset(self):
+    def events_rsvp_dataset(self,city):
 
         #read the dataset
-        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_old.csv', names=['response_nn','event','user','created'])
+        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_new_new.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
         #response is 
         # 0 for yes
         # 1 for no
@@ -27,6 +27,11 @@ class DataGenerator:
         #delete unwanted row of columns
         df = df.drop(df.index[0])
 
+        #drop cities we dont want
+        if city != 'all' :
+            df = df[df.city == city]
+
+        df = df.drop(['time', 'utc_offset', 'description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'], axis=1)
         #response to int because response has string and int as dtypes
         df['responses'] = df['response_nn'].astype("int8")
 
@@ -153,19 +158,33 @@ class DataGenerator:
     #type is 1) semantic 2) spatial 3) temporal   
     #city can be Chicago, Phoenix, San Jose, Mountain View, Scottsdale etc etc.
     def contextual_features(self, dataType, city): 
+        def converter(instr):
+            return np.fromstring(instr[1:-1],sep=' ')
+        
         #read the dataset
-        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_new_new.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
-        #response is 
-        # 0 for yes
-        # 1 for no
-        # 2 for waitlist
+        if city == 'Chicago':
+            df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_with_emb_Chicago.csv' ,converters={'description':converter}, names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        elif city == 'Phoenix':
+            df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_with_emb_Phoenix.csv',converters={'description':converter} , names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        elif city == 'San Jose':
+            df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_with_emb_San Jose.csv',converters={'description':converter} , names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
 
         #delete unwanted row of columns
         df = df.drop(df.index[0])
+        
 
-        #drop cities we dont want
-        if city != 'all' :
-            df = df[df.city == city]
+        # df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_new_new.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        # #response is 
+        # # 0 for yes
+        # # 1 for no
+        # # 2 for waitlist
+
+        # #delete unwanted row of columns
+        # df = df.drop(df.index[0])
+
+        # #drop cities we dont want
+        # if city != 'all' :
+        #     df = df[df.city == city]
 
         #response to int because response has string and int as dtypes
         df['responses'] = df['response_nn'].astype("int8")
@@ -176,10 +195,6 @@ class DataGenerator:
 
         #delete no response, we just need 
         df = df[df.responses != 1]
-
-        #get unique cities
-        # uniqueCities= df.city.value_counts()
-        # print(uniqueCities)
 
         # set the yes response as number 1 instead of 0.
         df['responses'] = df.responses.replace(0, 1)
@@ -254,19 +269,32 @@ class DataGenerator:
         return dfTraining, dfTestingAndValidation
 
     def general_data(self, city):
+        # #read the dataset
+        # df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_new_new.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        # #response is 
+        # # 0 for yes
+        # # 1 for no
+        # # 2 for waitlist
+
+        # #delete unwanted row of columns
+        # df = df.drop(df.index[0])
+
+        # #drop cities we dont want
+        # if city != 'all' :
+        #     df = df[df.city == city]
+        def converter(instr):
+            return np.fromstring(instr[1:-1],sep=' ')
+        
         #read the dataset
-        df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_new_new.csv', names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
-        #response is 
-        # 0 for yes
-        # 1 for no
-        # 2 for waitlist
+        if city == 'Chicago':
+            df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_with_emb_Chicago.csv' ,converters={'description':converter}, names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        elif city == 'Phoenix':
+            df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_with_emb_Phoenix.csv',converters={'description':converter} , names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
+        elif city == 'San Jose':
+            df = pd.read_csv('/home/nikoscha/Documents/ThesisR/datasets/dataset_with_emb_San Jose.csv',converters={'description':converter} , names=['user','response_nn', 'time', 'utc_offset','event','created','description', 'group_id','latx', 'longx','city' ,'laty', 'longy', 'distance', 'weekday'])
 
         #delete unwanted row of columns
         df = df.drop(df.index[0])
-
-        #drop cities we dont want
-        if city != 'all' :
-            df = df[df.city == city]
 
         #response to int because response has string and int as dtypes
         df['responses'] = df['response_nn'].astype("int8")
