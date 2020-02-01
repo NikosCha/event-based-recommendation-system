@@ -34,3 +34,20 @@ def create_diagram(x_axis, y_axis1, y_axis2, x_axis_name, y_axis_name1, y_axis_n
         plt.title(title_1)
         plt.grid(True)
         plt.savefig(file_name)
+
+def create_diagram_multiple_cities(array1, array2, array3, array1_name, array2_name, array3_name, x_axis, x_axis_name, y_axis_name, title_1,file_name):
+    plt.figure()
+    
+    plt.subplot(221)
+    plt.plot(x_axis, array1, 'k--', label='array1_name')
+    plt.plot(x_axis, array2, 'k:', label='array2_name')
+    plt.plot(x_axis, array3, 'k', label='array3_name')
+    legend = plt.legend(loc='upper left', shadow=False, fontsize='x-small')
+
+    # Put a nicer background color on the legend.
+    # legend.get_frame().set_facecolor('C0')
+
+    plt.ylabel(y_axis_name)
+    plt.xlabel(x_axis_name)
+
+    plt.savefig(file_name)
