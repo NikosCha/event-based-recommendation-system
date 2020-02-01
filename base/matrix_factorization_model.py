@@ -92,22 +92,6 @@ class MFModel:
         for k in range(epochs):
             for _ in range(batches):
 
-                # First we sample 15000 uniform indices.
-                # idx = np.random.randint(low=0, high=len(puids), size=samples)
-
-                # We then grab the users matching those indices.
-                # batch_u = puids[idx].reshape(-1, 1)
-
-                # Then the known items for those users.
-                # batch_i = peids[idx].reshape(-1, 1)
-
-                # Lastly we randomly sample one unknown item for each user.
-                # batch_j = np.random.randint(
-                        # low=0, high=len(self.events), size=(samples, 1), dtype='int32')
-
-
-                #get a random int from 1 to 3 
-                # i = np.random.randint(1, 3, dtype='int32')
                 l = []
                 auc = []
                 for i in range(1,self.cases + 1):
@@ -136,6 +120,10 @@ class MFModel:
         progress.close()
         create_diagram(num_epochs, loss_array, auc_array, 'Number of Epochs', 'Loss', 'AUC', '', '', 'Loss_AUC_validation_' + str(factors) + 'f' + str(learning_rate)+ 'lr' + '.png', 2)
         create_diagram(num_epochs, time_array, '', 'Number of Epochs', 'Time (s)', '', '', '', 'Time_validation_' + str(factors) + 'f' + str(learning_rate)+ 'lr' + '.png', 1)
+        pd.DataFrame(loss_array).to_csv("/home/nikoscha/Documents/event-based-recommendation-system/arrays/loss_validation" + str(factors) + 'f' + str(learning_rate)+ "lr.csv")
+        pd.DataFrame(auc_array).to_csv("/home/nikoscha/Documents/event-based-recommendation-system/arrays/auc_validation" + str(factors) + 'f' + str(learning_rate)+ "lr.csv")
+        pd.DataFrame(time_array).to_csv("/home/nikoscha/Documents/event-based-recommendation-system/arrays/time_validation" + str(factors) + 'f' + str(learning_rate)+ "lr.csv")
+
 
     def train_model_without_validation(self, epochs, batches, puids, peids, nuids, neids, factors, samples, learning_rate):
         progress = tqdm(total=batches*epochs)
