@@ -188,6 +188,7 @@ def main4():
         #get the random user
         userID=uniqueUsers[index][0]
         randomUserTraining = trainingData[trainingData.user_id == userID]  
+
         randomUserTesting = testingData[testingData.user_id == userID]
 
         #get one random event of user's testing set
@@ -703,13 +704,13 @@ def main12(city):
     TX_Model = TextualModel(graph)
     TS_Model = SpatialModel(graph)
     S_Model = SocialModel(graph, users_groups, user_dictionary, event_dictionary)
-    # TM_Model = TemporalModel(graph)
+    TM_Model = TemporalModel(graph)
 
     #get unique user's ids 
     #we get testing data because if a user exist
     uniqueUsers = np.unique(testingData.user_id)
-
     for numOfUser in range(0,1000):
+        start = datetime.datetime.now().timestamp()
         index =  np.random.randint(len(uniqueUsers), size=1)
 
         #get the random user
@@ -721,6 +722,8 @@ def main12(city):
         user_friends = S_Model.get_user_friend_list(user_groups,userID)
 
         randomUserTraining = trainingData[trainingData.user_id == userID]  
+
+        if len(randomUserTraining) < 7 : continue
         randomUserTesting = testingData[testingData.user_id == userID]
 
         #------------SPATIAL-----------------
@@ -739,10 +742,11 @@ def main12(city):
         user_vector = np.mean(randomUserTraining['description'])
 
         #------------TEMPORAL-----------------------
-        # userVector = TM_Model.get_user_vector(randomUserTraining)
+        userVector = TM_Model.get_user_vector(randomUserTraining)
 
 
         truePositiveScores = []
+        truePositiveScoresWithTemporal = []
         #for known event 
         for k in range(0, len(randomUserTesting)):
 
@@ -775,36 +779,46 @@ def main12(city):
                 SOCIAL_Score = S_Model.get_score('', totalFriendsRsvps_known)
 
             #-------temporal--------
-            # eventVectorKnown = TM_Model.get_event_vector(randomUserTesting.iloc[[k]])
-            # temporalSimilarityKnown = TM_Model.get_cosine_similarity(userVector, eventVectorKnown)
+            eventVectorKnown = TM_Model.get_event_vector(randomUserTesting.iloc[[k]])
+            temporalSimilarityKnown = TM_Model.get_cosine_similarity(userVector, eventVectorKnown)
 
 
             a = 1/(1 + np.log(len_event + 1))
             score = ((a*TEXT_Score*TS_Score*SOCIAL_Score)*((1 - a)*(MFScore)))
             truePositiveScores.append(score)
+            truePositiveScoresWithTemporal.append(score*temporalSimilarityKnown)
 
         truePositiveScores.sort(reverse=True)    
+        truePositiveScoresWithTemporal.sort(reverse=True)
         #one for true positives
         listOfOnes = [1 for i in range(len(truePositiveScores))]
         d = {'Score': truePositiveScores, 'TruePositive': listOfOnes}
         truePositivesDF = pd.DataFrame(d, columns=['Score', 'TruePositive'])
 
+        d = {'Score': truePositiveScoresWithTemporal, 'TruePositive': listOfOnes}
+        truePositivesDFWithTemporal = pd.DataFrame(d, columns=['Score', 'TruePositive'])
+
         eventScores = []
+        eventScoresWithTemporal = []
+
         #for other events 
         testingEventsWithoutUser = testingData[testingData.user_id != userID] 
         testingEventsWithoutUser = testingEventsWithoutUser.reset_index() 
-        for k in range(0, len(testingEventsWithoutUser)):
-            #MATRIX FACTORIZATION -- COLLABORATIVE FILTERING MODEL
+        # for k in range(0, len(testingEventsWithoutUser)):
+        for k in range(0, 15000):
+            
+            #MATRIX FACTORIZATION -- COLLABORATIVE FILTERING MODEL            
             MFScore = MF_Model.get_score(userID,testingEventsWithoutUser.iloc[[k]].event_id)
             MFScore = 1 / (1 + math.exp(-MFScore))
             event_id = testingEventsWithoutUser.iloc[[k]].event_id.values
             len_event = len(trainingData[trainingData.event_id == event_id[0]])   
 
             #-------spatial--------
+            
             TS_Score = TS_Model.get_score(trainingCoordinates, testingEventsWithoutUser.iloc[[k]], userCoordinates)
             TS_Score = TS_Score.numpy()
-            
             #-------textual--------
+            
             # randomEvent=TX_Model.prepare_description(testingEventsWithoutUser.iloc[[k]])
             randomEvent = testingEventsWithoutUser.iloc[[k]]
             randomEvent = randomEvent.reset_index()
@@ -814,34 +828,48 @@ def main12(city):
 
             #-------social--------
             SOCIAL_Score = 1
+            
             if len(user_friends) != 0:  #if user doesnt have friends dont use the model
                 #get total number of rsvps    
                 # totalNumberOfRsvps_unknown = S_Model.get_number_of_rsvps(testingEventsWithoutUser.iloc[[k]].event_id,trainingData)
                 #get total friends who will attend event
                 totalFriendsRsvps_unknown = S_Model.get_friends_rsvps_from_events(user_friends,testingEventsWithoutUser.iloc[[k]].event_id,trainingData)
                 SOCIAL_Score = S_Model.get_score('', totalFriendsRsvps_unknown) 
-            
             #-------temporal--------
-            # eventVectorUnknown = TM_Model.get_event_vector(testingEventsWithoutUser.iloc[[k]])
-            # temporalSimilarityUnknown = TM_Model.get_cosine_similarity(userVector, eventVectorUnknown)
-            
+            eventVectorUnknown = TM_Model.get_event_vector(testingEventsWithoutUser.iloc[[k]])
+            temporalSimilarityUnknown = TM_Model.get_cosine_similarity(userVector, eventVectorUnknown)
             
             a = 1/(1 + np.log(len_event + 1))
             score = ((a*TEXT_Score*TS_Score*SOCIAL_Score)*((1 - a)*(MFScore)))
             #if score is lower than true positive less score 
-            if score <= truePositiveScores[-1]: continue 
-            eventScores.append(score)
+            if score > truePositiveScores[-1]: eventScores.append(score)
+            if (score*temporalSimilarityUnknown) > truePositiveScoresWithTemporal[-1]: eventScoresWithTemporal.append(score*temporalSimilarityUnknown)
+    
 
         eventScores.sort(reverse=True) 
+        eventScoresWithTemporal.sort(reverse=True)
 
         listOfZeros = [0 for i in range(len(eventScores))]
         d = {'Score': eventScores, 'TruePositive': listOfZeros}
-        falsePositivesDF = pd.DataFrame(d, columns=['Score', 'TruePositive'])
+        falsePositivesDF = pd.DataFrame(d, columns=['Score', 'TruePositive'])  
+        
+        listOfZeros = [0 for i in range(len(eventScoresWithTemporal))]
+        d = {'Score': eventScoresWithTemporal, 'TruePositive': listOfZeros}
+        falsePositivesDFWithTemporal = pd.DataFrame(d, columns=['Score', 'TruePositive'])
 
         finalRank = pd.concat([truePositivesDF, falsePositivesDF], ignore_index=True)
         finalRank = finalRank.sort_values(by=['Score'], ascending=False)
-        finalRank.to_csv('/home/nikoscha/Documents/ThesisR/datasets/users_rankings/precision_'+ str(numOfUser) + '_' + city + '.csv', index=False)
+        finalRank.to_csv('/home/nikoscha/Documents/ThesisR/datasets/users_rankings/precision_'+ str(numOfUser) + '_' + city + str(len(randomUserTraining)) + '.csv', index=False)
+
+        finalRankWithTemporal = pd.concat([truePositivesDFWithTemporal, falsePositivesDFWithTemporal], ignore_index=True)
+        finalRankWithTemporal = finalRankWithTemporal.sort_values(by=['Score'], ascending=False)
+        finalRankWithTemporal.to_csv('/home/nikoscha/Documents/ThesisR/datasets/users_rankings/precision_'+ str(numOfUser) + '_' + city + str(len(randomUserTraining)) + '_WithTemporal.csv', index=False)
         
+
+        end = datetime.datetime.now().timestamp()
+        totalTime = end-start
+        print('---Total---', totalTime)
+
     print('----SPATIAL, SEMANTIC, SOCIAL AND TEMPORAL COMBINATION PRECISION----')
 
 def main13(city):
@@ -868,7 +896,7 @@ if __name__ == '__main__':
     # main9('Phoenix')
     # main9('San Jose')
     # main10()
-    main12('San Jose')
+    main12('Chicago')
     # main13('San Jose')
     # main13('Phoenix')
     # main13('Chicago')
